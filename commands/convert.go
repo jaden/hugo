@@ -15,12 +15,16 @@ package commands
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
+	"time"
 
+	"github.com/spf13/cast"
 	"github.com/spf13/cobra"
+	"github.com/spf13/hugo/helpers"
 	"github.com/spf13/hugo/hugolib"
 	"github.com/spf13/hugo/parser"
 	jww "github.com/spf13/jwalterweatherman"
+	"github.com/spf13/viper"
 )
 
 var OutputDir string
@@ -97,29 +101,41 @@ func convertContents(mark rune) (err error) {
 
 	jww.FEEDBACK.Println("processing", len(site.Source.Files()), "content files")
 	for _, file := range site.Source.Files() {
-		jww.INFO.Println("Attempting to convert", file.LogicalName)
-		page, err := hugolib.NewPage(file.LogicalName)
+		jww.INFO.Println("Attempting to convert", file.LogicalName())
+		page, err := hugolib.NewPage(file.LogicalName())
 		if err != nil {
 			return err
 		}
 
 		psr, err := parser.ReadFrom(file.Contents)
 		if err != nil {
-			jww.ERROR.Println("Error processing file:", path.Join(file.Dir, file.LogicalName))
+			jww.ERROR.Println("Error processing file:", file.Path())
 			return err
 		}
 		metadata, err := psr.Metadata()
 		if err != nil {
-			jww.ERROR.Println("Error processing file:", path.Join(file.Dir, file.LogicalName))
+			jww.ERROR.Println("Error processing file:", file.Path())
 			return err
 		}
 
-		page.Dir = file.Dir
+		// better handling of dates in formats that don't have support for them
+		if mark == parser.FormatToLeadRune("json") || mark == parser.FormatToLeadRune("yaml") || mark == parser.FormatToLeadRune("toml") {
+			newmetadata := cast.ToStringMap(metadata)
+			for k, v := range newmetadata {
+				switch vv := v.(type) {
+				case time.Time:
+					newmetadata[k] = vv.Format(time.RFC3339)
+				}
+			}
+			metadata = newmetadata
+		}
+
+		page.SetDir(filepath.Join(helpers.AbsPathify(viper.GetString("ContentDir")), file.Dir()))
 		page.SetSourceContent(psr.Content())
 		page.SetSourceMetaData(metadata, mark)
 
 		if OutputDir != "" {
-			page.SaveSourceAs(path.Join(OutputDir, page.FullFilePath()))
+			page.SaveSourceAs(filepath.Join(OutputDir, page.FullFilePath()))
 		} else {
 			if Unsafe {
 				page.SaveSource()

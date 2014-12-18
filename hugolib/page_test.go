@@ -2,10 +2,12 @@ package hugolib
 
 import (
 	"html/template"
-	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/spf13/hugo/helpers"
 )
 
 var EMPTY_PAGE = ""
@@ -40,13 +42,13 @@ Leading
 {
 "title": "spf13-vim 3.0 release and new website",
 "description": "spf13-vim is a cross platform distribution of vim plugins and resources for Vim.",
-"tags": [ ".vimrc", "plugins", "spf13-vim", "vim" ],
+"tags": [ ".vimrc", "plugins", "spf13-vim", "VIm" ],
 "date": "2012-04-06",
 "categories": [
     "Development",
     "VIM"
 ],
-"slug": "spf13-vim-3-0-release-and-new-website"
+"slug": "-spf13-vim-3-0-release-and-new-website-"
 }
 
 Content of the file goes Here
@@ -55,7 +57,7 @@ Content of the file goes Here
 {
 "title": "spf13-vim 3.0 release and new website"
 "description": "spf13-vim is a cross platform distribution of vim plugins and resources for Vim."
-"tags": [ ".vimrc", "plugins", "spf13-vim", "vim" ]
+"tags": [ ".vimrc", "plugins", "spf13-vim", "VIm" ]
 "date": "2012-04-06"
 "categories": [
     "Development"
@@ -114,10 +116,16 @@ Some more text
 	SIMPLE_PAGE_WITH_SHORTCODE_IN_SUMMARY = `---
 title: Simple
 ---
-Summary Next Line. {{% img src="/not/real" %}}.
+Summary Next Line. {{<figure src="/not/real" >}}.
 More text here.
 
 Some more text
+`
+
+	SIMPLE_PAGE_WITH_EMBEDDED_SCRIPT = `---
+title: Simple
+---
+<script type='text/javascript'>alert('the script tags are still there, right?');</script>
 `
 
 	SIMPLE_PAGE_WITH_SUMMARY_DELIMITER_SAME_LINE = `---
@@ -307,7 +315,7 @@ func TestCreateNewPage(t *testing.T) {
 	checkPageContent(t, p, "<p>Simple Page</p>\n")
 	checkPageSummary(t, p, "Simple Page")
 	checkPageType(t, p, "page")
-	checkPageLayout(t, p, "page/single.html", "single.html")
+	checkPageLayout(t, p, "page/single.html", "_default/single.html", "theme/page/single.html", "theme/_default/single.html")
 	checkTruncation(t, p, false, "simple short page")
 }
 
@@ -322,22 +330,35 @@ func TestPageWithDelimiter(t *testing.T) {
 	checkPageContent(t, p, "<p>Summary Next Line</p>\n\n<p>Some more text</p>\n")
 	checkPageSummary(t, p, "<p>Summary Next Line</p>\n")
 	checkPageType(t, p, "page")
-	checkPageLayout(t, p, "page/single.html", "single.html")
+	checkPageLayout(t, p, "page/single.html", "_default/single.html", "theme/page/single.html", "theme/_default/single.html")
 	checkTruncation(t, p, true, "page with summary delimiter")
 }
 
 func TestPageWithShortCodeInSummary(t *testing.T) {
+	s := new(Site)
+	s.prepTemplates()
 	p, _ := NewPage("simple.md")
 	err := p.ReadFrom(strings.NewReader(SIMPLE_PAGE_WITH_SHORTCODE_IN_SUMMARY))
+	if err != nil {
+		t.Fatalf("Unable to create a page with frontmatter and body content: %s", err)
+	}
+	p.Convert()
+
+	checkPageTitle(t, p, "Simple")
+	checkPageContent(t, p, "<p>Summary Next Line. \n<figure >\n    \n        <img src=\"/not/real\" />\n    \n    \n</figure>\n.\nMore text here.</p>\n\n<p>Some more text</p>\n")
+	checkPageSummary(t, p, "Summary Next Line. . More text here. Some more text")
+	checkPageType(t, p, "page")
+	checkPageLayout(t, p, "page/single.html", "_default/single.html", "theme/page/single.html", "theme/_default/single.html")
+}
+
+func TestPageWithEmbeddedScriptTag(t *testing.T) {
+	p, _ := NewPage("simple.md")
+	err := p.ReadFrom(strings.NewReader(SIMPLE_PAGE_WITH_EMBEDDED_SCRIPT))
 	p.Convert()
 	if err != nil {
 		t.Fatalf("Unable to create a page with frontmatter and body content: %s", err)
 	}
-	checkPageTitle(t, p, "Simple")
-	checkPageContent(t, p, "<p>Summary Next Line. {{% img src=&ldquo;/not/real&rdquo; %}}.\nMore text here.</p>\n\n<p>Some more text</p>\n")
-	checkPageSummary(t, p, "Summary Next Line. . More text here. Some more text")
-	checkPageType(t, p, "page")
-	checkPageLayout(t, p, "page/single.html", "single.html")
+	checkPageContent(t, p, "<script type='text/javascript'>alert('the script tags are still there, right?');</script>\n")
 }
 
 func TestTableOfContents(t *testing.T) {
@@ -347,8 +368,8 @@ func TestTableOfContents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to create a page with frontmatter and body content: %s", err)
 	}
-	checkPageContent(t, p, "\n\n<p>For some moments the old man did not reply. He stood with bowed head, buried in deep thought. But at last he spoke.</p>\n\n<h2 id=\"toc_0\">AA</h2>\n\n<p>I have no idea, of course, how long it took me to reach the limit of the plain,\nbut at last I entered the foothills, following a pretty little canyon upward\ntoward the mountains. Beside me frolicked a laughing brooklet, hurrying upon\nits noisy way down to the silent sea. In its quieter pools I discovered many\nsmall fish, of four-or five-pound weight I should imagine. In appearance,\nexcept as to size and color, they were not unlike the whale of our own seas. As\nI watched them playing about I discovered, not only that they suckled their\nyoung, but that at intervals they rose to the surface to breathe as well as to\nfeed upon certain grasses and a strange, scarlet lichen which grew upon the\nrocks just above the water line.</p>\n\n<h3 id=\"toc_1\">AAA</h3>\n\n<p>I remember I felt an extraordinary persuasion that I was being played with,\nthat presently, when I was upon the very verge of safety, this mysterious\ndeath&ndash;as swift as the passage of light&ndash;would leap after me from the pit about\nthe cylinder and strike me down. ## BB</p>\n\n<h3 id=\"toc_2\">BBB</h3>\n\n<p>&ldquo;You&rsquo;re a great Granser,&rdquo; he cried delightedly, &ldquo;always making believe them little marks mean something.&rdquo;</p>\n")
-	checkPageTOC(t, p, "<nav id=\"TableOfContents\">\n<ul>\n<li>\n<ul>\n<li><a href=\"#toc_0\">AA</a>\n<ul>\n<li><a href=\"#toc_1\">AAA</a></li>\n<li><a href=\"#toc_2\">BBB</a></li>\n</ul></li>\n</ul></li>\n</ul>\n</nav>")
+	checkPageContent(t, p, "\n\n<p>For some moments the old man did not reply. He stood with bowed head, buried in deep thought. But at last he spoke.</p>\n\n<h2 id=\"aa:90b9174a5bdb091a9625b04adac96ca6\">AA</h2>\n\n<p>I have no idea, of course, how long it took me to reach the limit of the plain,\nbut at last I entered the foothills, following a pretty little canyon upward\ntoward the mountains. Beside me frolicked a laughing brooklet, hurrying upon\nits noisy way down to the silent sea. In its quieter pools I discovered many\nsmall fish, of four-or five-pound weight I should imagine. In appearance,\nexcept as to size and color, they were not unlike the whale of our own seas. As\nI watched them playing about I discovered, not only that they suckled their\nyoung, but that at intervals they rose to the surface to breathe as well as to\nfeed upon certain grasses and a strange, scarlet lichen which grew upon the\nrocks just above the water line.</p>\n\n<h3 id=\"aaa:90b9174a5bdb091a9625b04adac96ca6\">AAA</h3>\n\n<p>I remember I felt an extraordinary persuasion that I was being played with,\nthat presently, when I was upon the very verge of safety, this mysterious\ndeath&ndash;as swift as the passage of light&ndash;would leap after me from the pit about\nthe cylinder and strike me down. ## BB</p>\n\n<h3 id=\"bbb:90b9174a5bdb091a9625b04adac96ca6\">BBB</h3>\n\n<p>&ldquo;You&rsquo;re a great Granser,&rdquo; he cried delightedly, &ldquo;always making believe them little marks mean something.&rdquo;</p>\n")
+	checkPageTOC(t, p, "<nav id=\"TableOfContents\">\n<ul>\n<li>\n<ul>\n<li><a href=\"#aa:90b9174a5bdb091a9625b04adac96ca6\">AA</a>\n<ul>\n<li><a href=\"#aaa:90b9174a5bdb091a9625b04adac96ca6\">AAA</a></li>\n<li><a href=\"#bbb:90b9174a5bdb091a9625b04adac96ca6\">BBB</a></li>\n</ul></li>\n</ul></li>\n</ul>\n</nav>")
 }
 
 func TestPageWithMoreTag(t *testing.T) {
@@ -362,7 +383,7 @@ func TestPageWithMoreTag(t *testing.T) {
 	checkPageContent(t, p, "<p>Summary Same Line</p>\n\n<p>Some more text</p>\n")
 	checkPageSummary(t, p, "<p>Summary Same Line</p>\n")
 	checkPageType(t, p, "page")
-	checkPageLayout(t, p, "page/single.html", "single.html")
+	checkPageLayout(t, p, "page/single.html", "_default/single.html", "theme/page/single.html", "theme/_default/single.html")
 }
 
 func TestPageWithDate(t *testing.T) {
@@ -489,10 +510,10 @@ func TestDegenerateInvalidFrontMatterLeadingWhitespace(t *testing.T) {
 }
 
 func TestSectionEvaluation(t *testing.T) {
-	page, _ := NewPage("blue/file1.md")
+	page, _ := NewPage(filepath.FromSlash("blue/file1.md"))
 	page.ReadFrom(strings.NewReader(SIMPLE_PAGE))
-	if page.Section != "blue" {
-		t.Errorf("Section should be %s, got: %s", "blue", page.Section)
+	if page.Section() != "blue" {
+		t.Errorf("Section should be %s, got: %s", "blue", page.Section())
 	}
 }
 
@@ -502,36 +523,36 @@ func L(s ...string) []string {
 
 func TestLayoutOverride(t *testing.T) {
 	var (
-		path_content_two_dir = path.Join("content", "dub", "sub", "file1.md")
-		path_content_one_dir = path.Join("content", "gub", "file1.md")
-		path_content_no_dir  = path.Join("content", "file1")
-		path_one_directory   = path.Join("fub", "file1.md")
-		path_no_directory    = path.Join("file1.md")
+		path_content_two_dir = filepath.Join("content", "dub", "sub", "file1.md")
+		path_content_one_dir = filepath.Join("content", "gub", "file1.md")
+		path_content_no_dir  = filepath.Join("content", "file1")
+		path_one_directory   = filepath.Join("fub", "file1.md")
+		path_no_directory    = filepath.Join("file1.md")
 	)
 	tests := []struct {
 		content        string
 		path           string
 		expectedLayout []string
 	}{
-		{SIMPLE_PAGE_NOLAYOUT, path_content_two_dir, L("dub/sub/single.html", "dub/single.html", "single.html")},
-		{SIMPLE_PAGE_NOLAYOUT, path_content_one_dir, L("gub/single.html", "single.html")},
-		{SIMPLE_PAGE_NOLAYOUT, path_content_no_dir, L("page/single.html", "single.html")},
-		{SIMPLE_PAGE_NOLAYOUT, path_one_directory, L("fub/single.html", "single.html")},
-		{SIMPLE_PAGE_NOLAYOUT, path_no_directory, L("page/single.html", "single.html")},
-		{SIMPLE_PAGE_LAYOUT_FOOBAR, path_content_two_dir, L("dub/sub/foobar.html", "dub/foobar.html", "foobar.html")},
-		{SIMPLE_PAGE_LAYOUT_FOOBAR, path_content_one_dir, L("gub/foobar.html", "foobar.html")},
-		{SIMPLE_PAGE_LAYOUT_FOOBAR, path_one_directory, L("fub/foobar.html", "foobar.html")},
-		{SIMPLE_PAGE_LAYOUT_FOOBAR, path_no_directory, L("page/foobar.html", "foobar.html")},
-		{SIMPLE_PAGE_TYPE_FOOBAR, path_content_two_dir, L("foobar/single.html", "single.html")},
-		{SIMPLE_PAGE_TYPE_FOOBAR, path_content_one_dir, L("foobar/single.html", "single.html")},
-		{SIMPLE_PAGE_TYPE_FOOBAR, path_content_no_dir, L("foobar/single.html", "single.html")},
-		{SIMPLE_PAGE_TYPE_FOOBAR, path_one_directory, L("foobar/single.html", "single.html")},
-		{SIMPLE_PAGE_TYPE_FOOBAR, path_no_directory, L("foobar/single.html", "single.html")},
-		{SIMPLE_PAGE_TYPE_LAYOUT, path_content_two_dir, L("barfoo/buzfoo.html", "buzfoo.html")},
-		{SIMPLE_PAGE_TYPE_LAYOUT, path_content_one_dir, L("barfoo/buzfoo.html", "buzfoo.html")},
-		{SIMPLE_PAGE_TYPE_LAYOUT, path_content_no_dir, L("barfoo/buzfoo.html", "buzfoo.html")},
-		{SIMPLE_PAGE_TYPE_LAYOUT, path_one_directory, L("barfoo/buzfoo.html", "buzfoo.html")},
-		{SIMPLE_PAGE_TYPE_LAYOUT, path_no_directory, L("barfoo/buzfoo.html", "buzfoo.html")},
+		{SIMPLE_PAGE_NOLAYOUT, path_content_two_dir, L("dub/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_NOLAYOUT, path_content_one_dir, L("gub/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_NOLAYOUT, path_content_no_dir, L("page/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_NOLAYOUT, path_one_directory, L("fub/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_NOLAYOUT, path_no_directory, L("page/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_LAYOUT_FOOBAR, path_content_two_dir, L("dub/foobar.html", "_default/foobar.html")},
+		{SIMPLE_PAGE_LAYOUT_FOOBAR, path_content_one_dir, L("gub/foobar.html", "_default/foobar.html")},
+		{SIMPLE_PAGE_LAYOUT_FOOBAR, path_one_directory, L("fub/foobar.html", "_default/foobar.html")},
+		{SIMPLE_PAGE_LAYOUT_FOOBAR, path_no_directory, L("page/foobar.html", "_default/foobar.html")},
+		{SIMPLE_PAGE_TYPE_FOOBAR, path_content_two_dir, L("foobar/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_TYPE_FOOBAR, path_content_one_dir, L("foobar/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_TYPE_FOOBAR, path_content_no_dir, L("foobar/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_TYPE_FOOBAR, path_one_directory, L("foobar/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_TYPE_FOOBAR, path_no_directory, L("foobar/single.html", "_default/single.html")},
+		{SIMPLE_PAGE_TYPE_LAYOUT, path_content_two_dir, L("barfoo/buzfoo.html", "_default/buzfoo.html")},
+		{SIMPLE_PAGE_TYPE_LAYOUT, path_content_one_dir, L("barfoo/buzfoo.html", "_default/buzfoo.html")},
+		{SIMPLE_PAGE_TYPE_LAYOUT, path_content_no_dir, L("barfoo/buzfoo.html", "_default/buzfoo.html")},
+		{SIMPLE_PAGE_TYPE_LAYOUT, path_one_directory, L("barfoo/buzfoo.html", "_default/buzfoo.html")},
+		{SIMPLE_PAGE_TYPE_LAYOUT, path_no_directory, L("barfoo/buzfoo.html", "_default/buzfoo.html")},
 	}
 	for _, test := range tests {
 		p, _ := NewPage(test.path)
@@ -539,8 +560,32 @@ func TestLayoutOverride(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Unable to parse content:\n%s\n", test.content)
 		}
+
+		for _, y := range test.expectedLayout {
+			test.expectedLayout = append(test.expectedLayout, "theme/"+y)
+		}
 		if !listEqual(p.Layout(), test.expectedLayout) {
 			t.Errorf("Layout mismatch. Expected: %s, got: %s", test.expectedLayout, p.Layout())
+		}
+	}
+}
+
+func TestSliceToLower(t *testing.T) {
+	tests := []struct {
+		value    []string
+		expected []string
+	}{
+		{[]string{"a", "b", "c"}, []string{"a", "b", "c"}},
+		{[]string{"a", "B", "c"}, []string{"a", "b", "c"}},
+		{[]string{"A", "B", "C"}, []string{"a", "b", "c"}},
+	}
+
+	for _, test := range tests {
+		res := helpers.SliceToLower(test.value)
+		for i, val := range res {
+			if val != test.expected[i] {
+				t.Errorf("Case mismatch. Expected %s, got %s", test.expected[i], res[i])
+			}
 		}
 	}
 }

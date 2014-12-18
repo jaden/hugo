@@ -1,18 +1,21 @@
 ---
-title: "Example Content File"
-date: "2013-07-01"
-aliases: ["/doc/example/"]
-linktitle: "Example"
+aliases:
+- /doc/example/
+date: 2013-07-01
+linktitle: Example
 menu:
-    main:
-        parent: 'content'
-weight: 50
+  main:
+    parent: content
+next: /themes/overview
 notoc: true
+prev: /content/summaries
+title: Example Content File
+weight: 70
 ---
 
-Somethings are better shown than explained. The following is a very basic example of a content file:
+Some things are better shown than explained. The following is a very basic example of a content file:
 
-**mysite/project/nitro.md  <- http://mysite.com/project/nitro.html**
+**mysite/project/nitro.md  ← http://mysite.com/project/nitro.html**
 
     ---
     Title:       "Nitro : A quick and simple profiler for Go"

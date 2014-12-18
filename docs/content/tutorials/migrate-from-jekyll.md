@@ -1,10 +1,12 @@
 ---
-title: "Migrate to Hugo from Jekyll"
-date: "2014-03-10"
-weight: 10
+date: 2014-03-10
+linktitle: Migrating from Jekyll
 menu:
   main:
-    parent: 'tutorials'
+    parent: tutorials
+prev: /tutorials/mathjax
+title: Migrate to Hugo from Jekyll
+weight: 10
 ---
 
 ## Move static content to `static`
@@ -15,7 +17,7 @@ With Jekyll, something that looked like
         ▾ images/
             logo.png
 
-Should become
+should become
 
     ▾ <root>/
         ▾ static/
@@ -25,24 +27,24 @@ Should become
 Additionally, you'll want any files that should reside at the root (such as `CNAME`) to be moved to `static`.
 
 ## Create your Hugo configuration file
-Hugo can read your configuration as json, yaml or toml. Hugo supports parameters custom configuration too. Refer to the [Hugo configuration documentation](/overview/configuration/) for details.
+Hugo can read your configuration as JSON, YAML or TOML. Hugo supports parameters custom configuration too. Refer to the [Hugo configuration documentation](/overview/configuration/) for details.
 
 ## Set your configuration publish folder to `_site`
 The default is for Jekyll to publish to `_site` and for Hugo to publish to `public`. If, like me, you have [`_site` mapped to a git submodule on the `gh-pages` branch](http://blog.blindgaenger.net/generate_github_pages_in_a_submodule.html), you'll want to do one of two alternatives:
 
 1. Change your submodule to point to map `gh-pages` to public instead of `_site` (recommended).
 
-    git submodule deinit _site
-    git rm _site
-    git submodule add -b gh-pages git@github.com:your-username/your-repo.git public
+        git submodule deinit _site
+        git rm _site
+        git submodule add -b gh-pages git@github.com:your-username/your-repo.git public
 
-1. Or, change the Hugo configuration to use `_site` instead of `public`.
+2. Or, change the Hugo configuration to use `_site` instead of `public`.
 
-    {
-        ..
-        "publishdir": "_site",
-        ..
-    }
+        {
+            ..
+            "publishdir": "_site",
+            ..
+        }
 
 ## Convert Jekyll templates to Hugo templates
 That's the bulk of the work right here. The documentation is your friend. You should refer to [Jekyll's template documentation](http://jekyllrb.com/docs/templates/) if you need to refresh your memory on how you built your blog and [Hugo's template](/layout/templates/) to learn Hugo's way. 
@@ -50,7 +52,7 @@ That's the bulk of the work right here. The documentation is your friend. You sh
 As a single reference data point, converting my templates for [heyitsalex.net](http://heyitsalex.net) took me no more than a few hours. 
 
 ## Convert Jekyll plugins to Hugo shortcodes
-Jekyll has [plugins](http://jekyllrb.com/docs/plugins/), Hugo has [shortcodes](/doc/shortcodes/). It's fairly trivial to do a port.
+Jekyll has [plugins](http://jekyllrb.com/docs/plugins/); Hugo has [shortcodes](/doc/shortcodes/). It's fairly trivial to do a port.
 
 ### Implementation
 As an example, I was using a custom [`image_tag`](https://github.com/alexandre-normand/alexandre-normand/blob/74bb12036a71334fdb7dba84e073382fc06908ec/_plugins/image_tag.rb) plugin to generate figures with caption when running Jekyll. As I read about shortcodes, I found Hugo had a nice built-in shortcode that does exactly the same thing.
@@ -135,11 +137,11 @@ is written as this Hugo shortcode:
 ### Usage
 I simply changed:
 
-  {% image full http://farm5.staticflickr.com/4136/4829260124_57712e570a_o_d.jpg "One of my favorite touristy-type photos. I secretly waited for the good light while we were "having fun" and took this. Only regret: a stupid pole in the top-left corner of the frame I had to clumsily get rid of at post-processing." ->http://www.flickr.com/photos/alexnormand/4829260124/in/set-72157624547713078/ %}
+    {% image full http://farm5.staticflickr.com/4136/4829260124_57712e570a_o_d.jpg "One of my favorite touristy-type photos. I secretly waited for the good light while we were "having fun" and took this. Only regret: a stupid pole in the top-left corner of the frame I had to clumsily get rid of at post-processing." ->http://www.flickr.com/photos/alexnormand/4829260124/in/set-72157624547713078/ %}
 
 to this (this example uses a slightly extended version named `fig`, different than the built-in `figure`):
 
-  {{% fig class="full" src="http://farm5.staticflickr.com/4136/4829260124_57712e570a_o_d.jpg" title="One of my favorite touristy-type photos. I secretly waited for the good light while we were having fun and took this. Only regret: a stupid pole in the top-left corner of the frame I had to clumsily get rid of at post-processing." link="http://www.flickr.com/photos/alexnormand/4829260124/in/set-72157624547713078/" %}}
+    {{</* fig class="full" src="http://farm5.staticflickr.com/4136/4829260124_57712e570a_o_d.jpg" title="One of my favorite touristy-type photos. I secretly waited for the good light while we were having fun and took this. Only regret: a stupid pole in the top-left corner of the frame I had to clumsily get rid of at post-processing." link="http://www.flickr.com/photos/alexnormand/4829260124/in/set-72157624547713078/" */>}}
 
 As a bonus, the shortcode named parameters are, arguably, more readable. 
 
@@ -150,5 +152,5 @@ Depending on the amount of customization that was done with each post with Jekyl
 ### Clean up
 You'll want to remove the Jekyll configuration at this point. If you have anything else that isn't used, delete it. 
 
-## A pratical example in a diff
-[Hey, it's alex](http://heyitsalex.net) was migrated in less than a _father-with-kids day_ from Jekyll to Hugo. You can see all the changes (and screw-ups) by looking at this [diff](https://github.com/alexandre-normand/alexandre-normand/compare/869d69435bd2665c3fbf5b5c78d4c22759d7613a...b7f6605b1265e83b4b81495423294208cc74d610).
+## A practical example in a diff
+[Hey, it's Alex](http://heyitsalex.net) was migrated in less than a _father-with-kids day_ from Jekyll to Hugo. You can see all the changes (and screw-ups) by looking at this [diff](https://github.com/alexandre-normand/alexandre-normand/compare/869d69435bd2665c3fbf5b5c78d4c22759d7613a...b7f6605b1265e83b4b81495423294208cc74d610).

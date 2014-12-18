@@ -14,14 +14,16 @@
 package helpers
 
 import (
+	"fmt"
+	"github.com/PuerkitoBio/purell"
 	"net/url"
 	"path"
-
-	"github.com/PuerkitoBio/purell"
+	"strings"
 )
 
+//SanitizeUrl sanitizes the input URL string.
 func SanitizeUrl(in string) string {
-	url, err := purell.NormalizeURLString(in, purell.FlagsUsuallySafeGreedy|purell.FlagRemoveDuplicateSlashes|purell.FlagRemoveUnnecessaryHostDots|purell.FlagRemoveEmptyPortSeparator)
+	url, err := purell.NormalizeURLString(in, purell.FlagsSafe|purell.FlagRemoveTrailingSlash|purell.FlagRemoveDotSegments|purell.FlagRemoveDuplicateSlashes|purell.FlagRemoveUnnecessaryHostDots|purell.FlagRemoveEmptyPortSeparator)
 	if err != nil {
 		return in
 	}
@@ -33,7 +35,7 @@ func SanitizeUrl(in string) string {
 //     uri: Vim (text editor)
 //     urlize: vim-text-editor
 func Urlize(uri string) string {
-	sanitized := MakePath(uri)
+	sanitized := MakePathToLower(uri)
 
 	// escape unicode letters
 	parsedUri, err := url.Parse(sanitized)
@@ -45,7 +47,7 @@ func Urlize(uri string) string {
 	return x
 }
 
-// Combines a base with a path
+// Combines base URL with content path to create full URL paths.
 // Example
 //    base:   http://spf13.com/
 //    path:   post/how-i-blog
@@ -57,25 +59,46 @@ func MakePermalink(host, plink string) *url.URL {
 		panic(err)
 	}
 
-	path, err := url.Parse(plink)
+	p, err := url.Parse(plink)
 	if err != nil {
 		panic(err)
 	}
-	return base.ResolveReference(path)
+
+	if p.Host != "" {
+		panic(fmt.Errorf("Can't make permalink from absolute link %q", plink))
+	}
+
+	base.Path = path.Join(base.Path, p.Path)
+
+	// path.Join will strip off the last /, so put it back if it was there.
+	if strings.HasSuffix(p.Path, "/") && !strings.HasSuffix(base.Path, "/") {
+		base.Path = base.Path + "/"
+	}
+
+	return base
 }
 
 func UrlPrep(ugly bool, in string) string {
-	in = SanitizeUrl(in)
 	if ugly {
-		return Uglify(in)
+		x := Uglify(SanitizeUrl(in))
+		return x
 	} else {
-		return PrettifyUrl(in)
+		x := PrettifyUrl(SanitizeUrl(in))
+		if path.Ext(x) == ".xml" {
+			return x
+		}
+		url, err := purell.NormalizeURLString(x, purell.FlagAddTrailingSlash)
+		if err != nil {
+			fmt.Printf("ERROR returned by NormalizeURLString. Returning in = %q\n", in)
+			return in
+		}
+		return url
 	}
 }
 
-// Don't Return /index.html portion.
+// PrettifyUrl takes a URL string and returns a semantic, clean URL.
 func PrettifyUrl(in string) string {
-	x := PrettifyPath(in)
+	x := PrettifyUrlPath(in)
 
 	if path.Base(x) == "index.html" {
 		return path.Dir(x)
@@ -88,9 +111,33 @@ func PrettifyUrl(in string) string {
 	return x
 }
 
-// /section/name/index.html -> /section/name.html
-// /section/name/  -> /section/name.html
-// /section/name.html -> /section/name.html
+//PrettifyUrlPath takes a URL path to a content and converts it to enable pretty URLS.
+//	/section/name.html becomes /section/name/index.html
+//	/section/name/  becomes /section/name/index.html
+//	/section/name/index.html becomes /section/name/index.html
+func PrettifyUrlPath(in string) string {
+	if path.Ext(in) == "" {
+		// /section/name/  -> /section/name/index.html
+		if len(in) < 2 {
+			return "/"
+		}
+		return path.Join(path.Clean(in), "index.html")
+	} else {
+		name, ext := ResourceAndExt(in)
+		if name == "index" {
+			// /section/name/index.html -> /section/name/index.html
+			return path.Clean(in)
+		} else {
+			// /section/name.html -> /section/name/index.html
+			return path.Join(path.Dir(in), name, "index"+ext)
+		}
+	}
+}
+
+//Uglify does the opposite of PrettifyPath().
+// 	/section/name/index.html becomes /section/name.html
+// 	/section/name/  becomes /section/name.html
+// 	/section/name.html becomes /section/name.html
 func Uglify(in string) string {
 	if path.Ext(in) == "" {
 		if len(in) < 2 {
@@ -99,7 +146,7 @@ func Uglify(in string) string {
 		// /section/name/  -> /section/name.html
 		return path.Clean(in) + ".html"
 	} else {
-		name, ext := FileAndExt(in)
+		name, ext := ResourceAndExt(in)
 		if name == "index" {
 			// /section/name/index.html -> /section/name.html
 			d := path.Dir(in)
@@ -113,4 +160,12 @@ func Uglify(in string) string {
 			return path.Clean(in)
 		}
 	}
+}
+
+// Same as FileAndExt, but for Urls
+func ResourceAndExt(in string) (name string, ext string) {
+	ext = path.Ext(in)
+	base := path.Base(in)
+
+	return FileAndExtSep(in, ext, base, "/"), ext
 }

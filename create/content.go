@@ -17,12 +17,15 @@ import (
 	"bytes"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/spf13/cast"
 	"github.com/spf13/hugo/helpers"
+	"github.com/spf13/hugo/hugofs"
 	"github.com/spf13/hugo/hugolib"
 	"github.com/spf13/hugo/parser"
 	jww "github.com/spf13/jwalterweatherman"
@@ -30,7 +33,7 @@ import (
 )
 
 func NewContent(kind, name string) (err error) {
-	jww.INFO.Println("attempting to create", name, "of", kind)
+	jww.INFO.Println("attempting to create ", name, "of", kind)
 
 	location := FindArchetype(kind)
 
@@ -56,6 +59,7 @@ func NewContent(kind, name string) (err error) {
 	}
 	newmetadata, err := cast.ToStringMapE(metadata)
 	if err != nil {
+		jww.ERROR.Println("Error processing archetype file:", location)
 		return err
 	}
 
@@ -90,13 +94,32 @@ func NewContent(kind, name string) (err error) {
 		return err
 	}
 
-	page.Dir = viper.GetString("sourceDir")
-	page.SetSourceMetaData(newmetadata, parser.FormatToLeadRune(viper.GetString("MetaDataFormat")))
+	if x := viper.GetString("MetaDataFormat"); x == "json" || x == "yaml" || x == "toml" {
+		newmetadata["date"] = time.Now().Format(time.RFC3339)
+	}
 
-	if err = page.SafeSaveSourceAs(path.Join(viper.GetString("contentDir"), name)); err != nil {
+	//page.Dir = viper.GetString("sourceDir")
+	page.SetSourceMetaData(newmetadata, parser.FormatToLeadRune(viper.GetString("MetaDataFormat")))
+	page.SetSourceContent(psr.Content())
+	if err = page.SafeSaveSourceAs(filepath.Join(viper.GetString("contentDir"), name)); err != nil {
 		return
 	}
-	jww.FEEDBACK.Println(helpers.AbsPathify(path.Join(viper.GetString("contentDir"), name)), "created")
+	jww.FEEDBACK.Println(helpers.AbsPathify(filepath.Join(viper.GetString("contentDir"), name)), "created")
+
+	editor := viper.GetString("NewContentEditor")
+
+	if editor != "" {
+		jww.FEEDBACK.Printf("Editing %s in %s.\n", name, editor)
+
+		cmd := exec.Command(editor, path.Join(viper.GetString("contentDir"), name))
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err = cmd.Run(); err != nil {
+			return
+		}
+	}
 
 	return nil
 }
@@ -105,7 +128,7 @@ func FindArchetype(kind string) (outpath string) {
 	search := []string{helpers.AbsPathify(viper.GetString("archetypeDir"))}
 
 	if viper.GetString("theme") != "" {
-		themeDir := path.Join(helpers.AbsPathify("themes/"+viper.GetString("theme")), "/archetypes/")
+		themeDir := filepath.Join(helpers.AbsPathify("themes/"+viper.GetString("theme")), "/archetypes/")
 		if _, err := os.Stat(themeDir); os.IsNotExist(err) {
 			jww.ERROR.Println("Unable to find archetypes directory for theme :", viper.GetString("theme"), "in", themeDir)
 		} else {
@@ -114,11 +137,21 @@ func FindArchetype(kind string) (outpath string) {
 	}
 
 	for _, x := range search {
-		pathsToCheck := []string{kind + ".md", kind, "default.md", "default"}
+		// If the new content isn't in a subdirectory, kind == "".
+		// Therefore it should be excluded otherwise `is a directory`
+		// error will occur. github.com/spf13/hugo/issues/411
+		var pathsToCheck []string
+
+		if kind == "" {
+			pathsToCheck = []string{"default.md", "default"}
+		} else {
+			pathsToCheck = []string{kind + ".md", kind, "default.md", "default"}
+		}
 		for _, p := range pathsToCheck {
-			curpath := path.Join(x, p)
+			curpath := filepath.Join(x, p)
 			jww.DEBUG.Println("checking", curpath, "for archetypes")
-			if exists, _ := helpers.Exists(curpath); exists {
+			if exists, _ := helpers.Exists(curpath, hugofs.SourceFs); exists {
+				jww.INFO.Println("curpath: " + curpath)
 				return curpath
 			}
 		}

@@ -14,6 +14,7 @@
 package hugolib
 
 import (
+	"html/template"
 	"sort"
 	"strings"
 
@@ -25,8 +26,8 @@ type MenuEntry struct {
 	Name       string
 	Menu       string
 	Identifier string
-	PreName    string
-	PostName   string
+	Pre        template.HTML
+	Post       template.HTML
 	Weight     int
 	Parent     string
 	Children   Menu
@@ -66,6 +67,10 @@ func (me *MenuEntry) IsEqual(inme *MenuEntry) bool {
 	return me.hopefullyUniqueId() == inme.hopefullyUniqueId() && me.Parent == inme.Parent
 }
 
+func (me *MenuEntry) IsSameResource(inme *MenuEntry) bool {
+	return me.Url != "" && inme.Url != "" && me.Url == inme.Url
+}
+
 func (me *MenuEntry) MarshallMap(ime map[string]interface{}) {
 	for k, v := range ime {
 		loki := strings.ToLower(k)
@@ -76,6 +81,10 @@ func (me *MenuEntry) MarshallMap(ime map[string]interface{}) {
 			me.Weight = cast.ToInt(v)
 		case "name":
 			me.Name = cast.ToString(v)
+		case "pre":
+			me.Pre = template.HTML(cast.ToString(v))
+		case "post":
+			me.Post = template.HTML(cast.ToString(v))
 		case "identifier":
 			me.Identifier = cast.ToString(v)
 		case "parent":
@@ -124,7 +133,7 @@ func (by MenuEntryBy) Sort(menu Menu) {
 		menu: menu,
 		by:   by, // The Sort method's receiver is the function (closure) that defines the sort order.
 	}
-	sort.Sort(ms)
+	sort.Stable(ms)
 }
 
 var DefaultMenuEntrySort = func(m1, m2 *MenuEntry) bool {

@@ -1,18 +1,20 @@
 ---
-title: "Aliases"
-date: "2013-07-09"
 aliases:
-    - /doc/redirects/
-    - /doc/alias/
-    - /doc/aliases/
-weight: 20
+- /doc/redirects/
+- /doc/alias/
+- /doc/aliases/
+date: 2013-07-09
 menu:
   main:
-    parent: 'extras'
+    parent: extras
+next: /extras/builders
+prev: /taxonomies/ordering
+title: Aliases
+weight: 10
 ---
 
-For people migrating existing published content to Hugo theres a good chance
-you need a mechanism to handle redirecting old urls.
+For people migrating existing published content to Hugo, there's a good chance
+you need a mechanism to handle redirecting old URLs.
 
 Luckily, this can be handled easily with aliases in Hugo.
 
@@ -25,7 +27,7 @@ Luckily, this can be handled easily with aliases in Hugo.
         - /2010/even-earlier-url.html
     ---
 
-Now when you go to any of the aliases locations they
+Now when you go to any of the aliases locations, they
 will redirect to the page.
 
 ## Important Behaviors
