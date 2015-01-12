@@ -10,6 +10,7 @@ title: Release Notes
 weight: 10
 ---
 
+
 ## **0.12.0** Sept 1, 2014
 
 A lot has happened since Hugo v0.11.0 was released. Most of the work has been
@@ -40,7 +41,7 @@ This release represents over 90 code commits from 28 different contributors.
 This release represents over 110 code commits from 29 different contributors.
 
   * Considerably faster... about 3 - 4x faster on average
-  * [Live Reload](/extras/livereload). Hugo will automatically reload the browser when the build is complete
+  * [LiveReload](/extras/livereload). Hugo will automatically reload the browser when the build is complete
   * Theme engine w/[Theme Repository](http://github.com/spf13/hugoThemes)
   * [Menu system](/extras/menus) with support for active page
   * [Builders](/extras/builders) to quickly create a new site, content or theme
@@ -55,6 +56,9 @@ This release represents over 110 code commits from 29 different contributors.
   * More informative verbose output
   * Renamed Indexes > [Taxonomies](/taxonomies/overview)
   * Renamed Chrome > [Partials](/templates/partials)
+
+## Next release
+  * Added section Prev/Next pointers.
 
 ## **0.10.0** March 1, 2014
 

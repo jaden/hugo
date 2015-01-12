@@ -17,10 +17,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/spf13/cast"
 	"github.com/spf13/hugo/helpers"
-	"github.com/spf13/hugo/hugofs"
 	"github.com/spf13/hugo/parser"
+
+	"github.com/spf13/cast"
+	"github.com/spf13/hugo/hugofs"
 	"github.com/spf13/hugo/source"
 	"github.com/spf13/hugo/tpl"
 	jww "github.com/spf13/jwalterweatherman"
@@ -40,7 +41,8 @@ type Page struct {
 	Summary         template.HTML
 	Aliases         []string
 	Status          string
-	Images          []string
+	Images          []Image
+	Videos          []Video
 	TableOfContents template.HTML
 	Truncated       bool
 	Draft           bool
@@ -68,7 +70,6 @@ type Source struct {
 	Content     []byte
 	source.File
 }
-
 type PageMeta struct {
 	WordCount      int
 	FuzzyWordCount int
@@ -79,6 +80,8 @@ type PageMeta struct {
 type Position struct {
 	Prev *Page
 	Next *Page
+	PrevInSection *Page
+	NextInSection *Page
 }
 
 type Pages []*Page
@@ -98,8 +101,42 @@ func (p *Page) IsPage() bool {
 	return true
 }
 
+func (p *Page) Author() Author {
+	authors := p.Authors()
+
+	for _, author := range authors {
+		return author
+	}
+	return Author{}
+}
+
+func (p *Page) Authors() AuthorList {
+	authorKeys, ok := p.Params["authors"]
+	authors := authorKeys.([]string)
+	if !ok || len(authors) < 1 || len(p.Site.Authors) < 1 {
+		return AuthorList{}
+	}
+
+	al := make(AuthorList)
+	for _, author := range authors {
+		a, ok := p.Site.Authors[author]
+		if ok {
+			al[author] = a
+		}
+	}
+	return al
+}
+
 func (p *Page) UniqueId() string {
 	return p.Source.UniqueId()
+}
+
+func (p *Page) Ref(ref string) (string, error) {
+	return p.Node.Site.Ref(ref, p)
+}
+
+func (p *Page) RelRef(ref string) (string, error) {
+	return p.Node.Site.RelRef(ref, p)
 }
 
 // for logging
@@ -139,11 +176,32 @@ func (p *Page) setSummary() {
 }
 
 func (p *Page) renderBytes(content []byte) []byte {
-	return helpers.RenderBytes(content, p.guessMarkupType(), p.UniqueId())
+	return helpers.RenderBytes(
+		helpers.RenderingContext{Content: content, PageFmt: p.guessMarkupType(),
+			DocumentId: p.UniqueId(), ConfigFlags: p.getRenderingConfigFlags()})
 }
 
 func (p *Page) renderContent(content []byte) []byte {
-	return helpers.RenderBytesWithTOC(content, p.guessMarkupType(), p.UniqueId())
+	return helpers.RenderBytesWithTOC(helpers.RenderingContext{Content: content, PageFmt: p.guessMarkupType(),
+		DocumentId: p.UniqueId(), ConfigFlags: p.getRenderingConfigFlags()})
+}
+
+func (p *Page) getRenderingConfigFlags() map[string]bool {
+	flags := make(map[string]bool)
+
+	pageParam := p.GetParam("blackfriday")
+	siteParam := viper.GetStringMap("blackfriday")
+
+	flags = cast.ToStringMapBool(siteParam)
+
+	if pageParam != nil {
+		pageFlags := cast.ToStringMapBool(pageParam)
+		for key, value := range pageFlags {
+			flags[key] = value
+		}
+	}
+
+	return flags
 }
 
 func newPage(filename string) *Page {
@@ -341,7 +399,7 @@ func (page *Page) update(f interface{}) error {
 		return fmt.Errorf("no metadata found")
 	}
 	m := f.(map[string]interface{})
-
+	var err error
 	for k, v := range m {
 		loki := strings.ToLower(k)
 		switch loki {
@@ -365,9 +423,15 @@ func (page *Page) update(f interface{}) error {
 		case "keywords":
 			page.Keywords = cast.ToStringSlice(v)
 		case "date":
-			page.Date = cast.ToTime(v)
+			page.Date, err = cast.ToTimeE(v)
+			if err != nil {
+				jww.ERROR.Printf("Failed to parse date '%v' in page %s", v, page.File.Path())
+			}
 		case "publishdate", "pubdate":
-			page.PublishDate = cast.ToTime(v)
+			page.PublishDate, err = cast.ToTimeE(v)
+			if err != nil {
+				jww.ERROR.Printf("Failed to parse publishdate '%v' in page %s", v, page.File.Path())
+			}
 		case "draft":
 			page.Draft = cast.ToBool(v)
 		case "layout":
@@ -438,6 +502,8 @@ func (page *Page) GetParam(key string) interface{} {
 		return cast.ToTime(v)
 	case []string:
 		return helpers.SliceToLower(v.([]string))
+	case map[interface{}]interface{}:
+		return v
 	}
 	return nil
 }

@@ -42,7 +42,7 @@ Hugo boasts the following features:
   * Extremely fast build times (~1&nbsp;ms per page)
   * Completely cross platform: Runs on Mac OS&nbsp;X, Linux and Windows
   * Easy [installation](/overview/installing)
-  * Render changes [on the fly](/overview/usage) with [live reload](/extras/livereload) as you develop
+  * Render changes [on the fly](/overview/usage) with [LiveReload](/extras/livereload) as you develop
   * Complete theme support
   * Host your site anywhere
 
@@ -72,10 +72,10 @@ Hugo boasts the following features:
 
 ### Additional Features
 
-  * Integrated Disqus comment support
+  * Integrated [Disqus](https://disqus.com/) comment support
   * Automatic [RSS](/layout/rss) creation
-  * Support for Go and [Amber](https://github.com/eknkc/amber) templates
-  * Syntax [highlighting](/extras/highlighting) powered by pygments
+  * Support for [Go](http://golang.org/pkg/html/template/), [Amber](https://github.com/eknkc/amber) and [Ace](http://ace.yoss.si/) HTML templates
+  * Syntax [highlighting](/extras/highlighting) powered by [Pygments](http://pygments.org/)
 
 See what's coming next in the [roadmap](/meta/roadmap).
 
