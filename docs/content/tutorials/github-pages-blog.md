@@ -1,4 +1,6 @@
 ---
+aliases:
+    - /tutorials/github_pages_blog/
 author: Spencer Lyon
 date: 2014-03-21
 linktitle: Hosting on GitHub
@@ -6,7 +8,7 @@ menu:
   main:
     parent: tutorials
 next: /tutorials/mathjax
-prev: /community/contributing
+prev: /tutorials/creating-a-new-theme
 title: Hosting on GitHub Pages
 weight: 10
 ---
@@ -240,7 +242,7 @@ Step by step:
 2. Create on GitHub `<username>.github.io` repository (it will host the `public` folder: the static website)
 2. `git clone <<your-project>-hugo-url> && cd <your-project>-hugo`
 3. Make your website work locally (`hugo serve --watch -t <yourtheme>`)
-4. Once you are happy with the results, `Ctrl+c` (kill server) and `rm -rf public` (don't worry, it can always be regenerated with `hugo -t <yourtheme>`)
+4. Once you are happy with the results, <kbd>Ctrl</kbd>+<kbd>C</kbd> (kill server) and `rm -rf public` (don't worry, it can always be regenerated with `hugo -t <yourtheme>`)
 5. `git submodule add git@github.com:<username>/<username>.github.io.git public`
 6. Almost done: add a `deploy.sh` script to help you (and make it executable: `chmod +x deploy.sh`):
 

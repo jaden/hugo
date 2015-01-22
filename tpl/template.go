@@ -29,7 +29,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -38,7 +37,6 @@ import (
 var localTemplates *template.Template
 var tmpl Template
 var funcMap template.FuncMap
-var chompRegexp *regexp.Regexp
 
 type Template interface {
 	ExecuteTemplate(wr io.Writer, name string, data interface{}) error
@@ -546,6 +544,7 @@ func Where(seq, key interface{}, args ...interface{}) (r interface{}, err error)
 	}
 }
 
+// Apply, given a map, array, or slice, returns a new slice with the function fname applied over it.
 func Apply(seq interface{}, fname string, args ...interface{}) (interface{}, error) {
 	if seq == nil {
 		return make([]interface{}, 0), nil
@@ -877,11 +876,62 @@ func Chomp(text interface{}) (string, error) {
 		return "", err
 	}
 
-	return chompRegexp.ReplaceAllString(s, ""), nil
+	return strings.TrimRight(s, "\r\n"), nil
+}
+
+// Trim leading/trailing characters defined by b from a
+func Trim(a interface{}, b string) (string, error) {
+	aStr, err := cast.ToStringE(a)
+	if err != nil {
+		return "", err
+	}
+	return strings.Trim(aStr, b), nil
+}
+
+// Replace all occurences of b with c in a
+func Replace(a, b, c interface{}) (string, error) {
+	aStr, err := cast.ToStringE(a)
+	if err != nil {
+		return "", err
+	}
+	bStr, err := cast.ToStringE(b)
+	if err != nil {
+		return "", err
+	}
+	cStr, err := cast.ToStringE(c)
+	if err != nil {
+		return "", err
+	}
+	return strings.Replace(aStr, bStr, cStr, -1), nil
+}
+
+// DateFormat converts the textual representation of the datetime string into
+// the other form or returns it of the time.Time value. These are formatted
+// with the layout string
+func DateFormat(layout string, v interface{}) (string, error) {
+	t, err := cast.ToTimeE(v)
+	if err != nil {
+		return "", err
+	}
+	return t.Format(layout), nil
 }
 
 func SafeHtml(text string) template.HTML {
 	return template.HTML(text)
+}
+
+// "safeHtmlAttr" is currently disabled, pending further discussion
+// on its use case.  2015-01-19
+func SafeHtmlAttr(text string) template.HTMLAttr {
+	return template.HTMLAttr(text)
+}
+
+func SafeCss(text string) template.CSS {
+	return template.CSS(text)
+}
+
+func SafeUrl(text string) template.URL {
+	return template.URL(text)
 }
 
 func doArithmetic(a, b interface{}, op rune) (interface{}, error) {
@@ -1104,6 +1154,7 @@ func (t *GoHtmlTemplate) AddInternalShortcode(name, content string) error {
 func (t *GoHtmlTemplate) AddTemplate(name, tpl string) error {
 	_, err := t.New(name).Parse(tpl)
 	if err != nil {
+		jww.ERROR.Println(err)
 		t.errors = append(t.errors, &templateErr{name: name, err: err})
 	}
 	return err
@@ -1159,7 +1210,7 @@ func (t *GoHtmlTemplate) GenerateTemplateNameFrom(base, path string) string {
 	return filepath.ToSlash(name)
 }
 
-func ignoreDotFile(path string) bool {
+func isDotFile(path string) bool {
 	return filepath.Base(path)[0] == '.'
 }
 
@@ -1175,7 +1226,7 @@ func (t *GoHtmlTemplate) loadTemplates(absPath string, prefix string) {
 		}
 
 		if !fi.IsDir() {
-			if ignoreDotFile(path) {
+			if isDotFile(path) {
 				return nil
 			}
 
@@ -1217,6 +1268,8 @@ func init() {
 		"isset":       IsSet,
 		"echoParam":   ReturnWhenSet,
 		"safeHtml":    SafeHtml,
+		"safeCss":     SafeCss,
+		"safeUrl":     SafeUrl,
 		"markdownify": Markdownify,
 		"first":       First,
 		"where":       Where,
@@ -1237,7 +1290,9 @@ func init() {
 		"relref":      RelRef,
 		"apply":       Apply,
 		"chomp":       Chomp,
+		"replace":     Replace,
+		"trim":        Trim,
+		"dateFormat":  DateFormat,
 	}
 
-	chompRegexp = regexp.MustCompile("[\r\n]+$")
 }

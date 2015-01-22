@@ -32,6 +32,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -50,15 +51,17 @@ type Page struct {
 	Tmpl            tpl.Template
 	Markup          string
 
-	extension         string
-	contentType       string
-	renderable        bool
-	layout            string
-	linkTitle         string
-	frontmatter       []byte
-	rawContent        []byte
-	contentShortCodes map[string]string
-	plain             string // TODO should be []byte
+	extension                string
+	contentType              string
+	renderable               bool
+	layout                   string
+	linkTitle                string
+	frontmatter              []byte
+	rawContent               []byte
+	contentShortCodes        map[string]string
+	plain                    string // TODO should be []byte
+	renderingConfigFlags     map[string]bool
+	renderingConfigFlagsInit sync.Once
 	PageMeta
 	Source
 	Position
@@ -78,8 +81,8 @@ type PageMeta struct {
 }
 
 type Position struct {
-	Prev *Page
-	Next *Page
+	Prev          *Page
+	Next          *Page
 	PrevInSection *Page
 	NextInSection *Page
 }
@@ -169,7 +172,7 @@ func (p *Page) setSummary() {
 	} else {
 		// If hugo defines split:
 		// render, strip html, then split
-		plain := strings.TrimSpace(p.Plain())
+		plain := strings.Join(strings.Fields(p.Plain()), " ")
 		p.Summary = helpers.BytesToHTML([]byte(helpers.TruncateWordsToWholeSentence(plain, helpers.SummaryLength)))
 		p.Truncated = len(p.Summary) != len(plain)
 	}
@@ -187,21 +190,28 @@ func (p *Page) renderContent(content []byte) []byte {
 }
 
 func (p *Page) getRenderingConfigFlags() map[string]bool {
-	flags := make(map[string]bool)
 
-	pageParam := p.GetParam("blackfriday")
-	siteParam := viper.GetStringMap("blackfriday")
+	p.renderingConfigFlagsInit.Do(func() {
+		p.renderingConfigFlags = make(map[string]bool)
 
-	flags = cast.ToStringMapBool(siteParam)
+		pageParam := p.GetParam("blackfriday")
+		siteParam := viper.GetStringMap("blackfriday")
 
-	if pageParam != nil {
-		pageFlags := cast.ToStringMapBool(pageParam)
-		for key, value := range pageFlags {
-			flags[key] = value
+		p.renderingConfigFlags = cast.ToStringMapBool(siteParam)
+
+		if pageParam != nil {
+			pageFlags := cast.ToStringMapBool(pageParam)
+			for key, value := range pageFlags {
+				p.renderingConfigFlags[key] = value
+			}
 		}
-	}
+	})
 
-	return flags
+	return p.renderingConfigFlags
+}
+
+func (p *Page) isRenderingFlagEnabled(flag string) bool {
+	return p.getRenderingConfigFlags()[flag]
 }
 
 func newPage(filename string) *Page {

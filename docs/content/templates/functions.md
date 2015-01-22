@@ -14,7 +14,7 @@ weight: 20
 
 Hugo uses the excellent Go html/template library for its template engine.
 It is an extremely lightweight engine that provides a very small amount of
-logic. In our experience it is just the right amount of logic to be able
+logic. In our experience, it is just the right amount of logic to be able
 to create a good static website.
 
 Go templates are lightweight but extensible. Hugo has added the following
@@ -63,7 +63,7 @@ Works on [lists](/templates/list/), [taxonomies](/taxonomies/displaying/), [term
 e.g.
 
     {{ range where .Data.Pages "Section" "post" }}
-       {{ .Content}}
+       {{ .Content }}
     {{ end }}
 
 It can be used with dot chaining second argument to refer a nested element of a value.
@@ -76,7 +76,7 @@ e.g.
     +++
 
     {{ range where .Site.Recent "Params.series" "golang" }}
-       {{ .Content}}
+       {{ .Content }}
     {{ end }}
 
 It can also be used with an operator like `!=`, `>=`, `in` etc. Without an operator (like above), `where` compares a given field with a matching value in a way like `=` is specified.
@@ -84,7 +84,7 @@ It can also be used with an operator like `!=`, `>=`, `in` etc. Without an opera
 e.g.
 
     {{ range where .Data.Pages "Section" "!=" "post" }}
-       {{ .Content}}
+       {{ .Content }}
     {{ end }}
 
 Following operators are now available
@@ -98,12 +98,10 @@ Following operators are now available
 - `in`: True if a given field value is included in a matching value. A matching value must be an array or a slice
 - `not in`: True if a given field value isn't included in a matching value. A matching value must be an array or a slice
 
-*where and first can be stacked*
-
-e.g.
+*`where` and `first` can be stacked, e.g.:*
 
     {{ range first 5 (where .Data.Pages "Section" "post") }}
-       {{ .Content}}
+       {{ .Content }}
     {{ end }}
 
 ### delimit
@@ -113,6 +111,7 @@ Maps will be sorted by the keys, and only a slice of the values will be returned
 Works on [lists](/templates/list/), [taxonomies](/taxonomies/displaying/), [terms](/templates/terms/), [groups](/templates/list/)
 
 e.g.
+
     // Front matter
     +++
     tags: [ "tag1", "tag2", "tag3" ]
@@ -134,6 +133,7 @@ Sorts maps, arrays and slices, returning a sorted slice. A sorted array of map v
 Works on [lists](/templates/list/), [taxonomies](/taxonomies/displaying/), [terms](/templates/terms/), [groups](/templates/list/)
 
 e.g.
+
     // Front matter
     +++
     tags: [ "tag3", "tag1", "tag2" ]
@@ -206,36 +206,54 @@ e.g.
 
 ## Math
 
-### add
-Adds two integers.
+<table class="table table-bordered">
+<thead>
+<tr>
+<th>Function</th>
+<th>Description</th>
+<th>Example</th>
+</tr>
+</thead>
 
-e.g. `{{add 1 2}}` → 3
+<tbody>
+<tr>
+<td><code>add</code></td>
+<td>Adds two integers.</td>
+<td><code>{{add 1 2}}</code> → 3</td>
+</tr>
 
-### sub
-Subtracts two integers.
+<tr>
+<td><code>sub</code></td>
+<td>Subtracts two integers.</td>
+<td><code>{{sub 3 2}}</code> → 1</td>
+</tr>
 
-e.g. `{{sub 3 2}}` → 1
+<tr>
+<td><code>mul</code></td>
+<td>Multiplies two integers.</td>
+<td><code>{{mul 2 3}}</code> → 6</td>
+</tr>
 
-### div
-Divides two integers.
+<tr>
+<td><code>div</code></td>
+<td>Divides two integers.</td>
+<td><code>{{div 6 3}}</code> → 2</td>
+</tr>
 
-e.g. `{{div 6 3}}` → 2
+<tr>
+<td><code>mod</code></td>
+<td>Modulus of two integers.</td>
+<td><code>{{mod 15 3}}</code> → 0</td>
+</tr>
 
-### mul
-Multiplies two integers.
+<tr>
+<td><code>modBool</code></td>
+<td>Boolean of modulus of two integers.  <code>true</code> if modulus is 0.</td>
+<td><code>{{modBool 15 3}}</code> → true</td>
+</tr>
+</tbody>
+</table>
 
-e.g. `{{mul 2 3}}` → 6
-
-### mod
-Modulus of two integers.
-
-e.g. `{{mod 15 3}}` → 0
-
-### modBool
-Boolean of modulus of two integers.
-true if modulus is 0.
-
-e.g. `{{modBool 15 3}}` → true
 
 ## Strings
 
@@ -245,10 +263,97 @@ Takes a string and sanitizes it for usage in URLs, converts spaces to "-".
 e.g. `<a href="/tags/{{ . | urlize }}">{{ . }}</a>`
 
 ### safeHtml
-Declares the provided string as "safe" so Go templates will not filter it.
+Declares the provided string as a "safe" HTML document fragment
+so Go html/template will not filter it.  It should not be used
+for HTML from a third-party, or HTML with unclosed tags or comments.
 
-e.g. `{{ .Params.CopyrightHTML | safeHtml }}`
+Example: Given a site-wide `config.toml` that contains this line:
 
+    copyright = "© 2015 Jane Doe.  <a href=\"http://creativecommons.org/licenses/by/4.0/\">Some rights reserved</a>."
+
+`{{ .Site.Copyright | safeHtml }}` would then output:
+
+> © 2015 Jane Doe.  <a href="http://creativecommons.org/licenses/by/4.0/">Some rights reserved</a>.
+
+However, without the `safeHtml` function, html/template assumes
+`.Site.Copyright` to be unsafe, escaping all HTML tags,
+rendering the whole string as plain-text like this:
+
+<blockquote>
+<p>© 2015 Jane Doe.  &lt;a href=&#34;http://creativecommons.org/licenses/by/4.0/&#34;&gt;Some rights reserved&lt;/a&gt;.</p>
+</blockquote>
+
+<!--
+### safeHtmlAttr
+Declares the provided string as a "safe" HTML attribute
+from a trusted source, for example, ` dir="ltr"`,
+so Go html/template will not filter it.
+
+Example: Given a site-wide `config.toml` that contains this menu entry:
+
+    [[menu.main]]
+        name = "IRC: #golang at freenode"
+        url = "irc://irc.freenode.net/#golang"
+
+* `<a href="{{ .Url }}">` ⇒ `<a href="#ZgotmplZ">` (Bad!)
+* `<a {{ printf "href=%q" .Url | safeHtmlAttr }}>` ⇒ `<a href="irc://irc.freenode.net/#golang">` (Good!)
+-->
+
+### safeCss
+Declares the provided string as a known "safe" CSS string
+so Go html/templates will not filter it.
+"Safe" means CSS content that matches any of:
+
+1. The CSS3 stylesheet production, such as `p { color: purple }`.
+2. The CSS3 rule production, such as `a[href=~"https:"].foo#bar`.
+3. CSS3 declaration productions, such as `color: red; margin: 2px`.
+4. The CSS3 value production, such as `rgba(0, 0, 255, 127)`.
+
+Example: Given `style = "color: red;"` defined in the front matter of your `.md` file:
+
+* `<p style="{{ .Params.style | safeCss }}">…</p>` ⇒ `<p style="color: red;">…</p>` (Good!)
+* `<p style="{{ .Params.style }}">…</p>` ⇒ `<p style="ZgotmplZ">…</p>` (Bad!)
+
+Note: "ZgotmplZ" is a special value that indicates that unsafe content reached a
+CSS or URL context.
+
+### safeUrl
+Declares the provided string as a "safe" URL or URL substring (see [RFC 3986][]).
+A URL like `javascript:checkThatFormNotEditedBeforeLeavingPage()` from a trusted
+source should go in the page, but by default dynamic `javascript:` URLs are
+filtered out since they are a frequently exploited injection vector.
+
+[RFC 3986]: http://tools.ietf.org/html/rfc3986
+
+Without `safeUrl`, only the URI schemes `http:`, `https:` and `mailto:`
+are considered safe by Go.  If any other URI schemes, e.g.&nbsp;`irc:` and
+`javascript:`, are detected, the whole URL would be replaced with
+`#ZgotmplZ`.  This is to "defang" any potential attack in the URL,
+rendering it useless.
+
+Example: Given a site-wide `config.toml` that contains this menu entry:
+
+    [[menu.main]]
+        name = "IRC: #golang at freenode"
+        url = "irc://irc.freenode.net/#golang"
+
+The following template:
+
+    <ul class="sidebar-menu">
+      {{ range .Site.Menus.main }}
+      <li><a href="{{ .Url }}">{{ .Name }}</a></li>
+      {{ end }}
+    </ul>
+
+would produce `<li><a href="#ZgotmplZ">IRC: #golang at freenode</a></li>`
+for the `irc://…` URL.
+
+To fix this, add ` | safeUrl` after `.Url` on the 3rd line, like this:
+
+      <li><a href="{{ .Url | safeUrl }}">{{ .Name }}</a></li>
+
+With this change, we finally get `<li><a href="irc://irc.freenode.net/#golang">IRC: #golang at freenode</a></li>`
+as intended.
 
 ### markdownify
 
@@ -275,6 +380,21 @@ e.g. `{{title "BatMan"}}` → "Batman"
 Removes any trailing newline characters. Useful in a pipeline to remove newlines added by other processing (including `markdownify`).
 
 e.g., `{{chomp "<p>Blockhead</p>\n"` → `"<p>Blockhead</p>"`
+
+### trim
+Trim returns a slice of the string with all leading and trailing characters contained in cutset removed.
+
+e.g. `{{ trim "++Batman--" "+-" }}` → "Batman"
+
+### replace
+Replace all occurences of the search string with the replacement string.
+
+e.g. `{{ replace "Batman and Robin" "Robin" "Catwoman" }}` → "Batman and Catwoman"
+
+### dateFormat
+Converts the textual representation of the datetime into the other form or returns it of Go `time.Time` type value. These are formatted with the layout string.
+
+e.g. `{{ dateFormat "Monday, Jan 2, 2006" "2015-01-21" }}` →"Wednesday, Jan 21, 2015"
 
 ### highlight
 Take a string of code and a language, uses Pygments to return the syntax highlighted code in HTML. Used in the [highlight shortcode](/extras/highlighting).

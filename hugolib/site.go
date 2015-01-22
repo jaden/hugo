@@ -96,6 +96,7 @@ type SiteInfo struct {
 	Files           []*source.File
 	Recent          *Pages // legacy, should be identical to Pages
 	Menus           *Menus
+	Hugo            *HugoInfo
 	Title           string
 	Author          map[string]interface{}
 	LanguageCode    string
@@ -185,9 +186,9 @@ func (s *SiteInfo) refLink(ref string, page *Page, relative bool) (string, error
 	if refUrl.Fragment != "" {
 		link = link + "#" + refUrl.Fragment
 
-		if refUrl.Path != "" && target != nil {
+		if refUrl.Path != "" && target != nil && !target.isRenderingFlagEnabled("plainIdAnchors") {
 			link = link + ":" + target.UniqueId()
-		} else if page != nil {
+		} else if page != nil && !page.isRenderingFlagEnabled("plainIdAnchors") {
 			link = link + ":" + page.UniqueId()
 		}
 	}
@@ -727,10 +728,10 @@ func (s *Site) assembleSections() {
 
 		for i, wp := range s.Sections[k] {
 			if i > 0 {
-				wp.Page.NextInSection = s.Sections[k][i - 1].Page;
+				wp.Page.NextInSection = s.Sections[k][i-1].Page
 			}
-			if i < len(s.Sections[k]) - 1 {
-				wp.Page.PrevInSection = s.Sections[k][i + 1].Page;
+			if i < len(s.Sections[k])-1 {
+				wp.Page.PrevInSection = s.Sections[k][i+1].Page
 			}
 		}
 	}

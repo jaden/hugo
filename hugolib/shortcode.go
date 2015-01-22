@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/spf13/hugo/helpers"
 	"github.com/spf13/hugo/tpl"
@@ -143,18 +144,28 @@ func ShortcodesHandle(stringToParse string, page *Page, t tpl.Template) string {
 	return string(tmpContent)
 }
 
-var isInnerShortcodeCache = make(map[string]bool)
+var isInnerShortcodeCache = struct {
+	sync.RWMutex
+	m map[string]bool
+}{m: make(map[string]bool)}
 
 // to avoid potential costly look-aheads for closing tags we look inside the template itself
 // we could change the syntax to self-closing tags, but that would make users cry
 // the value found is cached
 func isInnerShortcode(t *template.Template) bool {
-	if m, ok := isInnerShortcodeCache[t.Name()]; ok {
+	isInnerShortcodeCache.RLock()
+	m, ok := isInnerShortcodeCache.m[t.Name()]
+	isInnerShortcodeCache.RUnlock()
+
+	if ok {
 		return m
 	}
 
 	match, _ := regexp.MatchString("{{.*?\\.Inner.*?}}", t.Tree.Root.String())
-	isInnerShortcodeCache[t.Name()] = match
+
+	isInnerShortcodeCache.Lock()
+	isInnerShortcodeCache.m[t.Name()] = match
+	isInnerShortcodeCache.Unlock()
 
 	return match
 }
@@ -163,26 +174,11 @@ func createShortcodePlaceholder(id int) string {
 	return fmt.Sprintf("{@{@%s-%d@}@}", shortcodePlaceholderPrefix, id)
 }
 
-func renderShortcodes(sc shortcode, p *Page, t tpl.Template) string {
-
-	tokenizedRenderedShortcodes := make(map[string](string))
-	startCount := 0
-
-	shortcodes := renderShortcode(sc, tokenizedRenderedShortcodes, startCount, p, t)
-
-	// placeholders will be numbered from 1.. and top down
-	for i := 1; i <= len(tokenizedRenderedShortcodes); i++ {
-		placeHolder := createShortcodePlaceholder(i)
-		shortcodes = strings.Replace(shortcodes, placeHolder, tokenizedRenderedShortcodes[placeHolder], 1)
-	}
-	return shortcodes
-}
-
 const innerNewlineRegexp = "\n"
 const innerCleanupRegexp = `\A<p>(.*)</p>\n\z`
 const innerCleanupExpand = "$1"
 
-func renderShortcode(sc shortcode, tokenizedShortcodes map[string](string), cnt int, p *Page, t tpl.Template) string {
+func renderShortcode(sc shortcode, p *Page, t tpl.Template) string {
 	var data = &ShortcodeWithPage{Params: sc.params, Page: p}
 	tmpl := GetTemplate(sc.name, t)
 
@@ -198,12 +194,7 @@ func renderShortcode(sc shortcode, tokenizedShortcodes map[string](string), cnt 
 			case string:
 				inner += innerData.(string)
 			case shortcode:
-				// nested shortcodes will be rendered individually, replace them with temporary numbered tokens
-				cnt++
-				placeHolder := createShortcodePlaceholder(cnt)
-				renderedContent := renderShortcode(innerData.(shortcode), tokenizedShortcodes, cnt, p, t)
-				tokenizedShortcodes[placeHolder] = renderedContent
-				inner += placeHolder
+				inner += renderShortcode(innerData.(shortcode), p, t)
 			default:
 				jww.ERROR.Printf("Illegal state on shortcode rendering of '%s' in page %s. Illegal type in inner data: %s ",
 					sc.name, p.BaseFileName(), reflect.TypeOf(innerData))
@@ -265,7 +256,7 @@ func extractAndRenderShortcodes(stringToParse string, p *Page, t tpl.Template) (
 			// need to have something to replace with
 			renderedShortcodes[key] = ""
 		} else {
-			renderedShortcodes[key] = renderShortcodes(sc, p, t)
+			renderedShortcodes[key] = renderShortcode(sc, p, t)
 		}
 	}
 
@@ -418,7 +409,6 @@ Loop:
 				currShortcode.params = make([]string, 0)
 			}
 
-			// wrap it in a block level element to let it be left alone by the markup engine
 			placeHolder := createShortcodePlaceholder(id)
 			result.WriteString(placeHolder)
 			shortCodes[placeHolder] = currShortcode

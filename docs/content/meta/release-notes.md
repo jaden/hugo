@@ -10,6 +10,62 @@ title: Release Notes
 weight: 10
 ---
 
+## **0.13.0** ???, 2015
+
+A lot has happened since Hugo v0.12.0 was released. 
+
+* Changes to docs:
+	* A new [Troubleshooting](/troubleshooting/overview) section is added
+	* It's now searchable through Google Custom Search ([#753][])
+	* Some new great tutorials:
+		* [Automated deployments with Wercker](/tutorials/automated-deployments)
+		* [Creating a new theme](/tutorials/creating-a-new-theme)
+* Several improvements to the [template functions](/templates/functions):
+	* `where` is now even more powerful and accepts SQL-like syntax with the operators `==`, `eq`; `!=`, `<>`, `ne`; `>=`, `ge`; `>`, `gt`; `<=`, `le`; `<`, `lt`; `in`, `not in`
+	* `where` template function now also accepts dot chaining key argument (e.g. `"Params.foo.bar"`)
+* New template functions:
+	* `apply`
+	* `chomp`
+	* `delimit`
+	* `sort`
+	* `markdownify`
+	* `in` and `intersect` 
+	* `trim`
+	* `replace`
+	* `dateFormat`
+* A top level `Hugo` variable is added with various build information
+* Several new ways to order and group content:
+	* `ByPublishDate`
+	* `GroupByPublishDate(format, order)`
+	* `GroupByParam(key, order)`
+	* `GroupByParamDate(key, format, order)`
+* The [shortcode](/extras/shortcodes) handling is rewritten for speed and better error messages. Noticeable functional change is the distinction between  `{{</* */>}}` (typically  raw HTML) and `{{%/* */%}}` (Markdown)
+* Support for [cross-references](/extras/crossreferences)
+* A new, generic Next/Prev functionality is added to all lists of pages (sections, taxonomies, etc)
+* Add in-section [Next/Prev](/templates/variables) content pointers
+* Several [configurable improvements related to Markdown rendering](/overview/configuration/#configure-blackfriday-rendering:a66b35d20295cb764719ac8bd35837ec):
+	* Configuration of footnote rendering
+	* Optional support for smart angled quotes, e.g. `"Hugo"` → «Hugo»
+	* Enable descriptive header IDs
+* The content is now copied from archetype on `hugo new` (in addition to the front matter metadata)
+* Improved unit test coverage
+* Hugo has undergone a major refactoring, with a new handler system and a generic file system. This sounds and is technical, but will pave the way for new features and make Hugo even speedier
+* [Ace](http://ace.yoss.si/) template engine support ([#541][])
+* Fixed a lot of Windows-related path issues
+* Improved error messages for template and rendering errors
+* Enabled soft LiveReload of CSS and images ([#490][])
+* Various fixes in RSS feed generation ([#789][])
+* URLs in XML output is now correctly canonified ([#725][], [#728][], and part of [#789][])
+* `HasMenuCurrent` and `IsMenuCurrent` is now supported on Nodes
+* A bunch of [bug fixes](https://github.com/spf13/hugo/commits/master)
+
+[#490]: https://github.com/spf13/hugo/pull/490 "Pull Request #490: Livereload CSS and images without browser refresh"
+[#541]: https://github.com/spf13/hugo/pull/541 "Pull Request #541: Add Ace template engine support"
+[#725]: https://github.com/spf13/hugo/issues/725 "Issue #725: CanonifyUrls does not canonicalize urls in RSS"
+[#728]: https://github.com/spf13/hugo/issues/728 "Pull Request #728: Add ability to canonify URLs in rendered XML output."
+[#753]: https://github.com/spf13/hugo/issues/753 "Add search to documentation"
+[#789]: https://github.com/spf13/hugo/issues/789 "Issue #789: RSS feeds do not validate"
+
 
 ## **0.12.0** Sept 1, 2014
 
@@ -56,9 +112,6 @@ This release represents over 110 code commits from 29 different contributors.
   * More informative verbose output
   * Renamed Indexes > [Taxonomies](/taxonomies/overview)
   * Renamed Chrome > [Partials](/templates/partials)
-
-## Next release
-  * Added section Prev/Next pointers.
 
 ## **0.10.0** March 1, 2014
 
